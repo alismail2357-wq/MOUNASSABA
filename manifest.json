@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Tasks Collector",
+  "description": "A simple userscript for every page",
+  "version": "1.0",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Gamma Settings"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://newsnoc/uiSNOC/main/service*"
+      ],
+      "js": ["gammaCode.js", "gammaPanelOnly.js"],
+      "world": "MAIN"
+    }
+  ]
+}
