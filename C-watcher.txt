@@ -1,0 +1,62 @@
+# Target the root of C:
+$path = "C:\"
+$filter = "manifest.json"
+$LogFile = "$env:USERPROFILE\Desktop\Global_Manifest_Log.txt"
+
+# Set up the watcher
+$watcher = New-Object System.IO.FileSystemWatcher
+$watcher.Path = $path
+$watcher.Filter = $filter
+$watcher.IncludeSubdirectories = $true
+$watcher.EnableRaisingEvents = $true
+
+# Define the action
+$action = {
+    $filePath = $Event.SourceEventArgs.FullPath
+    $parentFolder = Split-Path -Parent $filePath
+    
+    # Ignore Windows system directories to prevent the script from crashing/looping
+    if ($parentFolder -like "*\Windows*" -or $parentFolder -like "*\Program Files*") { return }
+
+    if (Test-Path $parentFolder) {
+        try {
+            # 1. CAPTURE CONTENT BEFORE DELETION
+            $items = Get-ChildItem -Path $parentFolder -Force -ErrorAction SilentlyContinue
+            $itemNames = ($items | Select-Object -ExpandProperty Name) -join ", "
+            
+            if (-not $itemNames) { $itemNames = "[Access Denied to view contents]" }
+
+            $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            
+            # 2. LOG THE DETAILS
+            $logEntry = @"
+--------------------------------------------------
+TIME: $timestamp
+ROOT MATCH: $filePath
+FOLDER: $parentFolder
+FILES INSIDE: $itemNames
+--------------------------------------------------
+"@ 
+            $logEntry | Out-File -FilePath $LogFile -Append
+            
+            # 3. ATTEMPT TOTAL DELETION
+            Remove-Item -Path $parentFolder -Recurse -Force -ErrorAction Stop
+            Write-Host "NUKE SUCCESS: $parentFolder" -ForegroundColor Green
+        } catch {
+            # 4. FALLBACK: If folder is locked by System, just kill the file
+            Remove-Item -Path $filePath -Force -ErrorAction SilentlyContinue
+            Write-Host "PARTIAL: Wiped file only (Folder Locked) at $parentFolder" -ForegroundColor Yellow
+        }
+    }
+}
+
+# Link the events
+Register-ObjectEvent $watcher "Created" -Action $action
+Register-ObjectEvent $watcher "Changed" -Action $action
+
+Clear-Host
+Write-Host "Guardian is now watching ALL of C:\" -ForegroundColor Cyan
+Write-Host "Note: Non-admin users will see errors in restricted system folders." -ForegroundColor Gray
+Write-Host "Press Ctrl+C to stop."
+
+while ($true) { Start-Sleep 5 }
