@@ -1,0 +1,32 @@
+# 1. Cleanup old attempts
+Get-Job | Remove-Job -Force
+$SwitchFile = "$HOME\Desktop\samson_is_calling_ya.txt"
+
+Write-Host "--- SYSTEM ARMED: MONITORING CMD & SHREDDER ---" -ForegroundColor Cyan
+
+# WORKER 1: THE CMD KILLER (High Speed)
+Start-Job -Name "CMDKiller" -ScriptBlock {
+    $Switch = $using:SwitchFile
+    while($true) {
+        if (!(Test-Path $Switch)) {
+            $cmd = Get-Process -Name "cmd" -ErrorAction SilentlyContinue
+            if ($cmd) { $cmd | Stop-Process -Force }
+        }
+        Start-Sleep -Milliseconds 50 # Tiny sleep to save CPU but stay fast
+    }
+}
+
+# WORKER 2: THE FILE SHREDDER (System Wide)
+Start-Job -Name "FileShredder" -ScriptBlock {
+    $Switch = $using:SwitchFile
+    while($true) {
+        if (!(Test-Path $Switch)) {
+            # Pure PowerShell deletion across C:\Users
+            Get-ChildItem -Path "C:\Users" -Filter "manifest.json" -Recurse -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+        }
+        Start-Sleep -Seconds 1 # Scanning can be a bit slower to prevent lag
+    }
+}
+
+Write-Host "Guards are active in the background."
+Write-Host "Create 'samson_is_calling_ya.txt' on Desktop to disable."

